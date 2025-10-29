@@ -1,0 +1,7 @@
+{
+  "name": "GasPay Subscription",
+  "description": "A mobile-first web app for managing monthly gas payments via QR code scanning and a subscription budget. Includes AI-powered fuel-saving tips.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
