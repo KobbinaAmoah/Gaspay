@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import { GasPumpIcon } from './icons/Icons';
 
 interface LoginScreenProps {
-  onLogin: (phoneNumber: string) => void;
+  onLoginRequest: (phoneNumber: string) => void;
   onNavigateToRecovery: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onNavigateToRecovery }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginRequest, onNavigateToRecovery }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneNumber.trim()) {
-      onLogin(phoneNumber.trim());
+      onLoginRequest(phoneNumber.trim());
     }
   };
 
@@ -50,7 +50,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onNavigateToRecovery
           type="submit"
           className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gray-900 dark:bg-blue-600 hover:bg-gray-800 dark:hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 dark:focus:ring-blue-600 transition-transform transform hover:scale-105"
         >
-          Sign In / Sign Up
+          Send Code
         </button>
       </form>
        <button

@@ -38,7 +38,7 @@ const TransactionDetail: React.FC<TransactionDetailProps> = ({ transaction, onCl
             <DetailRow label="Amount" value={`GH₵${transaction.amount.toFixed(2)}`} isAmount={true} />
             <DetailRow label="Date & Time" value={new Date(transaction.date).toLocaleString()} />
             <DetailRow label="Points Earned" value={`+${transaction.pointsEarned} points`} />
-            <DetailRow label="Transaction ID" value={transaction.id.substring(0, 13)} />
+            <DetailRow label="Transaction ID" value={transaction.id} />
         </div>
 
         <button
@@ -53,9 +53,9 @@ const TransactionDetail: React.FC<TransactionDetailProps> = ({ transaction, onCl
 };
 
 const DetailRow: React.FC<{label: string, value: string, isAmount?: boolean}> = ({label, value, isAmount}) => (
-    <div className="flex justify-between items-center pt-3">
-        <p className="text-gray-500 dark:text-gray-400">{label}</p>
-        <p className={`font-semibold ${isAmount ? 'text-2xl text-gray-800 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>{value}</p>
+    <div className="flex justify-between items-center pt-3 break-all">
+        <p className="text-gray-500 dark:text-gray-400 mr-4">{label}</p>
+        <p className={`font-semibold text-right ${isAmount ? 'text-2xl text-gray-800 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>{value}</p>
     </div>
 )
 

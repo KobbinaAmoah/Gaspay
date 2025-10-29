@@ -53,7 +53,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onDeleteA
             <ProfileButton text="My Rewards" onClick={() => setScreen(Screen.Rewards)} />
             <ProfileButton text="Transaction History" onClick={() => setScreen(Screen.History)} />
             <ProfileButton text="Notifications" onClick={() => setScreen(Screen.Notifications)} />
-            <ProfileButton text="Payment Methods" onClick={() => {}} />
+            <ProfileButton text="Payment Methods" onClick={() => setScreen(Screen.PaymentMethods)} />
             <ProfileButton text="Help & Support" onClick={() => {}} />
          </div>
       </div>

@@ -20,6 +20,9 @@ export enum Screen {
   Stations = 'STATIONS',
   Notifications = 'NOTIFICATIONS',
   Rewards = 'REWARDS',
+  PaymentMethods = 'PAYMENT_METHODS',
+  Scan = 'SCAN',
+  PaymentSuccess = 'PAYMENT_SUCCESS',
 }
 
 export interface FuelSavingTip {
@@ -58,3 +61,10 @@ export interface RewardPoints {
 }
 
 export type Theme = 'light' | 'dark';
+
+export interface PaymentMethod {
+  id: string;
+  provider: 'MTN' | 'Vodafone' | 'AirtelTigo';
+  phoneNumber: string;
+  isPrimary: boolean;
+}
