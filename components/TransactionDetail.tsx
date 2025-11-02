@@ -1,13 +1,34 @@
 import React from 'react';
 import { Transaction } from '../types';
-import { GasPumpIcon, StarIcon } from './icons/Icons';
+import { GasPumpIcon } from './icons/Icons';
 
 interface TransactionDetailProps {
   transaction: Transaction;
+  transactions: Transaction[]; // Pass all transactions to find the previous one
   onClose: () => void;
 }
 
-const TransactionDetail: React.FC<TransactionDetailProps> = ({ transaction, onClose }) => {
+const TransactionDetail: React.FC<TransactionDetailProps> = ({ transaction, transactions, onClose }) => {
+
+  const getEfficiencyForTransaction = (tx: Transaction, allTx: Transaction[]) => {
+    if (!tx.odometer) return null;
+
+    const sortedTxWithOdometer = allTx
+        .filter(t => t.odometer !== undefined && new Date(t.date) < new Date(tx.date))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const previousTx = sortedTxWithOdometer[0];
+
+    if (previousTx && previousTx.odometer && tx.odometer > previousTx.odometer) {
+        const distance = tx.odometer - previousTx.odometer;
+        const costPerKm = tx.amount / distance;
+        return { distance, costPerKm };
+    }
+    return null;
+  }
+
+  const efficiency = getEfficiencyForTransaction(transaction, transactions);
+
   return (
     <div 
         className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in"
@@ -38,6 +59,8 @@ const TransactionDetail: React.FC<TransactionDetailProps> = ({ transaction, onCl
             <DetailRow label="Amount" value={`GH₵${transaction.amount.toFixed(2)}`} isAmount={true} />
             <DetailRow label="Date & Time" value={new Date(transaction.date).toLocaleString()} />
             <DetailRow label="Points Earned" value={`+${transaction.pointsEarned} points`} />
+            {transaction.odometer && <DetailRow label="Odometer Reading" value={`${transaction.odometer.toLocaleString()} km`} />}
+            {efficiency && <DetailRow label="Cost / km" value={`GH₵${efficiency.costPerKm.toFixed(2)}`} />}
             <DetailRow label="Transaction ID" value={transaction.id} />
         </div>
 

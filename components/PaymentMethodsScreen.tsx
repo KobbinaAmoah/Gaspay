@@ -26,6 +26,8 @@ const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({ methods, on
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [methodToRemove, setMethodToRemove] = useState<PaymentMethod | null>(null);
   const [confirmingPrimary, setConfirmingPrimary] = useState<PaymentMethod | null>(null);
+  const [pendingAddConfirmation, setPendingAddConfirmation] = useState<Omit<PaymentMethod, 'id' | 'isPrimary'> | null>(null);
+
 
   const [newMethod, setNewMethod] = useState({
     provider: 'MTN' as PaymentMethod['provider'],
@@ -35,11 +37,24 @@ const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({ methods, on
   const handleAddSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (newMethod.phoneNumber.trim()) {
-      onAddMethod(newMethod);
-      setIsAddModalOpen(false);
-      setNewMethod({ provider: 'MTN', phoneNumber: '' });
+      if (newMethod.provider === 'Vodafone' || newMethod.provider === 'AirtelTigo') {
+        setPendingAddConfirmation(newMethod);
+        setIsAddModalOpen(false);
+      } else {
+        onAddMethod(newMethod);
+        setIsAddModalOpen(false);
+        setNewMethod({ provider: 'MTN', phoneNumber: '' });
+      }
     }
   }, [newMethod, onAddMethod]);
+
+  const handleAddConfirmation = useCallback(() => {
+    if (pendingAddConfirmation) {
+        onAddMethod(pendingAddConfirmation);
+        setPendingAddConfirmation(null);
+        setNewMethod({ provider: 'MTN', phoneNumber: '' });
+    }
+  }, [pendingAddConfirmation, onAddMethod]);
 
   const handleRemoveConfirm = useCallback(() => {
     if (methodToRemove) {
@@ -179,6 +194,25 @@ const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({ methods, on
             </div>
         </div>
       )}
+
+      {/* Add Confirmation (USSD) Modal for Vodafone/AirtelTigo */}
+        {pendingAddConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 text-center animate-fade-in-up">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/50">
+                    <DevicePhoneMobileIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Confirm on Your Phone</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                    A prompt has been sent to <span className="font-semibold">{pendingAddConfirmation.phoneNumber}</span>. Please approve it to add this payment method.
+                </p>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                    <button onClick={() => setPendingAddConfirmation(null)} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
+                    <button onClick={handleAddConfirmation} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">I Have Approved</button>
+                </div>
+            </div>
+        </div>
+        )}
 
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Screen, Theme } from '../types';
-import { UserIcon, ChevronRightIcon, SunIcon, MoonIcon, WarningIcon, TrashIcon } from './icons/Icons';
+import { UserIcon, ChevronRightIcon, SunIcon, MoonIcon, WarningIcon, TrashIcon, ShieldCheckIcon } from './icons/Icons';
+import ActionConfirmationOtpModal from './ActionConfirmationOtpModal';
 
 interface ProfileScreenProps {
   user: User;
@@ -9,10 +10,24 @@ interface ProfileScreenProps {
   setScreen: (screen: Screen) => void;
   theme: Theme;
   toggleTheme: () => void;
+  isBiometricEnabled: boolean;
+  onSetBiometricEnabled: (enabled: boolean) => void;
 }
 
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onDeleteAccount, setScreen, theme, toggleTheme }) => {
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onDeleteAccount, setScreen, theme, toggleTheme, isBiometricEnabled, onSetBiometricEnabled }) => {
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
+
+  const handleDeleteRequest = () => {
+    setIsDeleteConfirmVisible(false);
+    setIsOtpModalVisible(true);
+  };
+
+  const handleOtpVerified = () => {
+    setIsOtpModalVisible(false);
+    onDeleteAccount();
+  };
+
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -37,11 +52,27 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onDeleteA
                 className="relative inline-flex items-center h-7 w-14 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors"
                 aria-label="Toggle dark mode"
             >
-                <span className={`inline-block h-6 w-6 transform rounded-full bg-white dark:bg-gray-800 transition-transform ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`}>
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white dark:bg-gray-800 shadow transition-transform ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`}>
                     {theme === 'light' ? 
                         <SunIcon className="h-4 w-4 m-1 text-yellow-500" /> : 
                         <MoonIcon className="h-4 w-4 m-1 text-blue-400" />
                     }
+                </span>
+            </button>
+        </div>
+      </div>
+
+       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-3">
+        <h2 className="px-4 pt-2 pb-1 text-sm font-semibold text-gray-500 dark:text-gray-400">Security</h2>
+        <div className="flex justify-between items-center p-4">
+            <span className="font-medium text-gray-700 dark:text-gray-300">Biometric Login</span>
+            <button
+                onClick={() => onSetBiometricEnabled(!isBiometricEnabled)}
+                className={`relative inline-flex items-center h-7 w-14 rounded-full transition-colors ${isBiometricEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                aria-label="Toggle biometric login"
+            >
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white dark:bg-gray-800 shadow transition-transform ${isBiometricEnabled ? 'translate-x-7' : 'translate-x-1'}`}>
+                    <ShieldCheckIcon className={`h-4 w-4 m-1 ${isBiometricEnabled ? 'text-blue-600' : 'text-gray-400'}`} />
                 </span>
             </button>
         </div>
@@ -98,7 +129,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onDeleteA
                         Cancel
                     </button>
                     <button
-                        onClick={onDeleteAccount}
+                        onClick={handleDeleteRequest}
                         className="w-full bg-red-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                     >
                         Delete
@@ -106,6 +137,16 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onDeleteA
                 </div>
             </div>
         </div>
+      )}
+
+      {isOtpModalVisible && (
+        <ActionConfirmationOtpModal
+          phoneNumber={user.phoneNumber}
+          onVerify={handleOtpVerified}
+          onCancel={() => setIsOtpModalVisible(false)}
+          actionText="Delete Account"
+          title="Verify Deletion"
+        />
       )}
     </div>
   );

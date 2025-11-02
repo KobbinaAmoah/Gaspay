@@ -1,340 +1,291 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Transaction, Screen, Budget, User, Notification, GasStation, RewardPoints, Theme, PaymentMethod } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Screen, Transaction, Budget, User, Notification, RewardPoints, PaymentMethod, Theme } from './types';
+import { api } from './services/api';
+
+import BottomNavBar from './components/BottomNavBar';
 import Dashboard from './components/Dashboard';
 import HistoryScreen from './components/HistoryScreen';
 import BudgetScreen from './components/BudgetScreen';
-import BottomNavBar from './components/BottomNavBar';
-import PaymentScreen from './components/PaymentScreen';
-import LoginScreen from './components/LoginScreen';
 import ProfileScreen from './components/ProfileScreen';
 import StationsScreen from './components/StationsScreen';
-import NotificationsScreen from './components/NotificationsScreen';
-import RewardsScreen from './components/RewardsScreen';
-import TransactionDetail from './components/TransactionDetail';
-import RecoveryScreen from './components/RecoveryScreen';
-import PaymentMethodsScreen from './components/PaymentMethodsScreen';
-import ScanScreen from './components/ScanScreen';
-import PaymentSuccessScreen from './components/PaymentSuccessScreen';
+import LoginScreen from './components/LoginScreen';
 import OtpScreen from './components/OtpScreen';
-
-// Mock Data
-const mockStations: GasStation[] = [
-  { id: '1', name: 'Goil Osu', location: { lat: 5.556, lng: -0.183 } },
-  { id: '2', name: 'Shell Airport', location: { lat: 5.603, lng: -0.180 } },
-  { id: '3', name: 'Total East Legon', location: { lat: 5.637, lng: -0.166 } },
-  { id: '4', name: 'Allied Oil Madina', location: { lat: 5.679, lng: -0.169 } },
-];
-
-const initialTransactions: Transaction[] = [
-  { id: '1', station: 'Goil Osu', amount: 45.50, date: '2023-10-26T10:00:00Z', pointsEarned: 4 },
-  { id: '2', station: 'Shell Airport', amount: 50.00, date: '2023-10-20T15:30:00Z', pointsEarned: 5 },
-  { id: '3', station: 'Total East Legon', amount: 30.00, date: '2023-10-12T08:45:00Z', pointsEarned: 3 },
-];
-
-const initialBudget: Budget = {
-  total: 300,
-  spent: 125.50,
-};
-
-const initialPoints: RewardPoints = {
-    balance: 12,
-    history: [
-      { transactionId: '1', points: 4, date: '2023-10-26T10:00:00Z' },
-      { transactionId: '2', points: 5, date: '2023-10-20T15:30:00Z' },
-      { transactionId: '3', points: 3, date: '2023-10-12T08:45:00Z' },
-    ]
-};
-
-const initialNotifications: Notification[] = [
-    { id: '1', message: 'Welcome to GasPay! Manage your fuel budget with ease.', date: new Date().toISOString(), read: false, type: 'info' },
-];
-
-const initialPaymentMethods: PaymentMethod[] = [
-    { id: 'pm_1', provider: 'MTN', phoneNumber: '024 123 4567', isPrimary: true },
-];
+import ScanScreen from './components/ScanScreen';
+import PaymentScreen from './components/PaymentScreen';
+import PaymentSuccessScreen from './components/PaymentSuccessScreen';
+import NotificationsScreen from './components/NotificationsScreen';
+import TransactionDetail from './components/TransactionDetail';
+import RewardsScreen from './components/RewardsScreen';
+import PaymentMethodsScreen from './components/PaymentMethodsScreen';
+import RecoveryScreen from './components/RecoveryScreen';
+import BiometricPrompt from './components/BiometricPrompt';
+// Fix: Import AppLogoIcon
+import { AppLogoIcon } from './components/icons/Icons';
 
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authScreen, setAuthScreen] = useState<'login' | 'otp' | 'recovery'>('login');
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [screen, setScreen] = useState<Screen>(Screen.Login);
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
+  
+  // App Data State
   const [user, setUser] = useState<User | null>(null);
-  const [loginPhoneNumber, setLoginPhoneNumber] = useState<string>('');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budget, setBudget] = useState<Budget>({ total: 0, spent: 0 });
+  const [points, setPoints] = useState<RewardPoints>({balance: 0, history: []});
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [isBiometricPromptVisible, setIsBiometricPromptVisible] = useState(false);
 
+
+  // Temporary state for flows
+  const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{ station: string; amount: number } | null>(null);
+  const [loginPhoneNumber, setLoginPhoneNumber] = useState('');
+  
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (prefersDark) {
-      setTheme('dark');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-  }, []);
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
-
+  
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
-  const [screen, setScreen] = useState<Screen>(Screen.Dashboard);
-  const [budget, setBudget] = useState<Budget>(initialBudget);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [pendingTransaction, setPendingTransaction] = useState<{ station: string; amount: number } | null>(null);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
-  
-  const [points, setPoints] = useState<RewardPoints>(initialPoints);
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods);
+  const loadAppData = useCallback(async () => {
+    // In a real app, you might use Promise.all
+    setUser(await api.getUser());
+    setTransactions(await api.getTransactions());
+    setBudget(await api.getBudget());
+    setPoints(await api.getRewardPoints());
+    setNotifications(await api.getNotifications());
+    setPaymentMethods(await api.getPaymentMethods());
+  }, []);
 
   useEffect(() => {
-    if (screen === Screen.Payment && !pendingTransaction) {
-      console.warn("Attempted to render Payment screen without a pending transaction. Redirecting to dashboard.");
-      setScreen(Screen.Dashboard);
-    }
-    if (screen === Screen.PaymentSuccess && !lastTransaction) {
-        console.warn("Attempted to render PaymentSuccess screen without a last transaction. Redirecting to dashboard.");
-        setScreen(Screen.Dashboard);
-    }
-  }, [screen, pendingTransaction, lastTransaction]);
-
-  const addNotification = useCallback((message: string, type: Notification['type'] = 'info') => {
-    const newNotification: Notification = {
-      id: new Date().toISOString(),
-      message,
-      date: new Date().toISOString(),
-      read: false,
-      type,
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-  }, []);
-
-  const handleLoginRequest = useCallback((phoneNumber: string) => {
-    setLoginPhoneNumber(phoneNumber);
-    setAuthScreen('otp');
-  }, []);
-  
-  const handleOtpVerification = useCallback((otp: string) => {
-      // In a real app, you'd verify the OTP against a backend service.
-      // Here, we'll just check against a mock OTP.
-      if (otp === '1234') {
-        setUser({ phoneNumber: loginPhoneNumber });
-        setIsAuthenticated(true);
-        setScreen(Screen.Dashboard);
-        addNotification('Successfully signed in.');
-        return true;
-      }
-      return false;
-  }, [loginPhoneNumber, addNotification]);
-
-
-  const handleLogout = useCallback(() => {
-    setUser(null);
-    setIsAuthenticated(false);
-    setAuthScreen('login');
-  }, []);
-  
-  const handleDeleteAccount = useCallback(() => {
-    // Reset all state to initial values
-    setBudget(initialBudget);
-    setTransactions(initialTransactions);
-    setPoints(initialPoints);
-    setNotifications(initialNotifications);
-    setPaymentMethods(initialPaymentMethods);
+    // On initial load, check stored settings
+    const storedAuth = api.isAuthenticated();
+    const biometricEnabled = api.isBiometricEnabledSync();
     
-    // Log the user out
-    handleLogout();
-  }, [handleLogout]);
-
-  const handleScan = useCallback(() => {
-    setScreen(Screen.Scan);
-  }, []);
-
-  const handleScanSuccess = useCallback((scannedData: { station: string; amount: number }) => {
-    setPendingTransaction(scannedData);
-    setScreen(Screen.Payment);
-  }, []);
-
-  const handleScanCancel = useCallback(() => {
-    setScreen(Screen.Dashboard);
-  }, []);
-
-
-  const handlePaymentConfirm = useCallback(() => {
-    if (pendingTransaction) {
-      const pointsEarned = Math.floor(pendingTransaction.amount / 10);
-      const newTransaction: Transaction = {
-        id: new Date().toISOString(),
-        ...pendingTransaction,
-        date: new Date().toISOString(),
-        pointsEarned,
-      };
-      
-      setBudget(prevBudget => ({
-        ...prevBudget,
-        spent: prevBudget.spent + newTransaction.amount,
-      }));
-      
-      setTransactions(prevTransactions => [newTransaction, ...prevTransactions]);
-      
-      setPoints(prevPoints => ({
-        balance: prevPoints.balance + pointsEarned,
-        history: [{ transactionId: newTransaction.id, points: pointsEarned, date: newTransaction.date }, ...prevPoints.history]
-      }));
-
-      addNotification(`Payment of GH₵${newTransaction.amount.toFixed(2)} to ${newTransaction.station} was successful.`, 'success');
-      addNotification(`You earned ${pointsEarned} points!`, 'reward');
-
-      setLastTransaction(newTransaction);
-      setPendingTransaction(null);
-      setScreen(Screen.PaymentSuccess);
+    setIsBiometricEnabled(biometricEnabled);
+    
+    if (storedAuth) {
+      setIsAuthenticated(true);
+    } else if (biometricEnabled) {
+      // If not logged in but biometrics are on, show the prompt
+      setIsBiometricPromptVisible(true);
     }
-  }, [pendingTransaction, addNotification]);
-
-  const handlePaymentCancel = useCallback(() => {
-    setPendingTransaction(null);
-    setScreen(Screen.Dashboard);
+    setIsAppLoading(false);
   }, []);
-
-  const handlePaymentSuccessClose = useCallback(() => {
-    setScreen(Screen.Dashboard);
-    setLastTransaction(null);
-  }, []);
-
-  const handleBudgetUpdate = useCallback((newTotal: number) => {
-    setBudget(prev => ({ ...prev, total: newTotal }));
-    addNotification(`Your monthly budget has been updated to GH₵${newTotal.toFixed(2)}.`, 'info');
-    setScreen(Screen.Dashboard);
-  }, [addNotification]);
-
-  const handleViewTransaction = useCallback((transaction: Transaction) => {
-    setSelectedTransaction(transaction);
-  }, []);
-
-  const handleCloseTransactionDetail = useCallback(() => {
-    setSelectedTransaction(null);
-  }, []);
-
-  const markNotificationsAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, []);
-
-  const handleAddPaymentMethod = useCallback((method: Omit<PaymentMethod, 'id' | 'isPrimary'>) => {
-    const newMethod: PaymentMethod = {
-      ...method,
-      id: `pm_${new Date().getTime()}`,
-      isPrimary: paymentMethods.length === 0, // Make primary if it's the first one
-    };
-    setPaymentMethods(prev => [...prev, newMethod]);
-    addNotification(`${method.provider} number ${method.phoneNumber} added successfully.`, 'success');
-  }, [paymentMethods.length, addNotification]);
-
-  const handleRemovePaymentMethod = useCallback((methodId: string) => {
-    setPaymentMethods(prev => {
-      const methodToRemove = prev.find(pm => pm.id === methodId);
-      const remaining = prev.filter(pm => pm.id !== methodId);
-      
-      if (methodToRemove?.isPrimary && remaining.length > 0) {
-        remaining[0] = { ...remaining[0], isPrimary: true };
-      }
-      
-      return remaining;
-    });
-    addNotification(`Payment method removed.`, 'info');
-  }, [addNotification]);
-
-  const handleSetPrimaryPaymentMethod = useCallback((methodId: string) => {
-    let newPrimaryMethod: PaymentMethod | undefined;
-    const updatedMethods = paymentMethods.map(pm => {
-        const isNewPrimary = pm.id === methodId;
-        if (isNewPrimary) {
-            newPrimaryMethod = pm;
-        }
-        return { ...pm, isPrimary: isNewPrimary };
-    });
-
-    setPaymentMethods(updatedMethods);
-    if (newPrimaryMethod) {
-        addNotification(`${newPrimaryMethod.provider} (${newPrimaryMethod.phoneNumber}) is now your primary payment method.`, 'success');
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAppData();
+      api.setAuthenticated(true);
+      setScreen(Screen.Dashboard);
+    } else {
+      api.setAuthenticated(false);
+      setScreen(Screen.Login);
     }
-  }, [paymentMethods, addNotification]);
-
-
-  const renderScreen = () => {
-    switch (screen) {
-      case Screen.Dashboard:
-        return <Dashboard budget={budget} transactions={transactions} onScan={handleScan} points={points.balance} setScreen={setScreen} notifications={notifications} />;
-      case Screen.History:
-        return <HistoryScreen transactions={transactions} onViewTransaction={handleViewTransaction} />;
-      case Screen.Budget:
-        return <BudgetScreen budget={budget} onUpdateBudget={handleBudgetUpdate} />;
-      case Screen.Profile:
-        return <ProfileScreen user={user!} onLogout={handleLogout} onDeleteAccount={handleDeleteAccount} setScreen={setScreen} theme={theme} toggleTheme={toggleTheme} />;
-      case Screen.Stations:
-        return <StationsScreen stations={mockStations} />;
-      case Screen.Notifications:
-        return <NotificationsScreen notifications={notifications} onMarkAsRead={markNotificationsAsRead} />;
-       case Screen.Rewards:
-        return <RewardsScreen points={points} />;
-      case Screen.PaymentMethods:
-        return <PaymentMethodsScreen methods={paymentMethods} onAddMethod={handleAddPaymentMethod} onRemoveMethod={handleRemovePaymentMethod} onSetPrimary={handleSetPrimaryPaymentMethod} />;
-      case Screen.Scan:
-        return <ScanScreen onScanSuccess={handleScanSuccess} onCancel={handleScanCancel} />;
-      case Screen.Payment:
-        if (pendingTransaction) {
-          return <PaymentScreen transaction={pendingTransaction} onConfirm={handlePaymentConfirm} onCancel={handlePaymentCancel} remainingBudget={budget.total - budget.spent} />;
-        }
-        return null; // Return null, the useEffect will handle the redirect.
-      case Screen.PaymentSuccess:
-        if (lastTransaction) {
-          return <PaymentSuccessScreen transaction={lastTransaction} budget={budget} onClose={handlePaymentSuccessClose} />;
-        }
-        return null; // Return null, the useEffect will handle the redirect.
-      default:
-        return <Dashboard budget={budget} transactions={transactions} onScan={handleScan} points={points.balance} setScreen={setScreen} notifications={notifications} />;
+  }, [isAuthenticated, loadAppData]);
+  
+  // --- Navigation and Flow Handlers ---
+  
+  const handleLoginRequest = async (phoneNumber: string) => {
+    setLoginPhoneNumber(phoneNumber);
+    const success = await api.loginRequest(phoneNumber);
+    if (success) {
+      setScreen(Screen.Otp);
     }
   };
 
-  const renderAuthScreens = () => {
-    switch (authScreen) {
-      case 'login':
-        return <LoginScreen onLoginRequest={handleLoginRequest} onNavigateToRecovery={() => setAuthScreen('recovery')} />;
-      case 'otp':
-        return <OtpScreen phoneNumber={loginPhoneNumber} onVerify={handleOtpVerification} onNavigateToLogin={() => setAuthScreen('login')} />;
-      case 'recovery':
-        return <RecoveryScreen onNavigateToLogin={() => setAuthScreen('login')} />;
-      default:
-        return <LoginScreen onLoginRequest={handleLoginRequest} onNavigateToRecovery={() => setAuthScreen('recovery')} />;
+  const handleOtpVerify = async (otp: string) => {
+    const success = await api.verifyOtp(otp);
+    if (success) {
+      setIsAuthenticated(true);
+    } else {
+      alert("Invalid OTP. Please try again.");
     }
-  }
+  };
+  
+  const handleScanSuccess = (data: { station: string; amount: number }) => {
+    setPendingPayment(data);
+    setScreen(Screen.Payment);
+  };
+  
+  const handlePaymentConfirm = async () => {
+    if (pendingPayment) {
+      const newTransaction = await api.addTransaction(pendingPayment);
+      setActiveTransaction(newTransaction);
+      setPendingPayment(null);
+      setScreen(Screen.PaymentSuccess);
+      // Refresh data after payment
+      loadAppData();
+    }
+  };
+  
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+  };
 
-  return (
-    <div className="flex justify-center items-start min-h-screen bg-gray-900 dark:bg-black font-sans">
-      <div className="w-full max-w-md bg-gray-100 dark:bg-gray-950 shadow-2xl flex flex-col" style={{ height: '100vh' }}>
-        {!isAuthenticated ? (
-          renderAuthScreens()
-        ) : (
-          <>
-            <main className="flex-grow overflow-y-auto p-4 pb-24">
-              {renderScreen()}
-            </main>
-            {screen !== Screen.Payment && screen !== Screen.Scan && screen !== Screen.PaymentSuccess && (
-              <BottomNavBar activeScreen={screen} setScreen={setScreen} />
-            )}
-            {selectedTransaction && (
-              <TransactionDetail transaction={selectedTransaction} onClose={handleCloseTransactionDetail} />
-            )}
-          </>
-        )}
+  const handleUpdateOdometer = async (transactionId: string, odometer: number) => {
+      const updatedTransactions = await api.updateOdometerReading(transactionId, odometer);
+      setTransactions(updatedTransactions);
+  };
+
+  const handleUpdateBudget = async (newTotal: number) => {
+    const updatedBudget = await api.updateBudget(newTotal);
+    setBudget(updatedBudget);
+    // Optionally, navigate back to dashboard or show a success message
+    setScreen(Screen.Dashboard);
+  };
+
+  const handleMarkNotificationsRead = useCallback(async () => {
+      const updatedNotifications = await api.markNotificationsAsRead();
+      setNotifications(updatedNotifications);
+  }, []);
+
+  const handleDeleteAccount = () => {
+    api.clearAllData();
+    setIsAuthenticated(false);
+    window.location.reload();
+  };
+
+  const handleAddMethod = async (method: Omit<PaymentMethod, 'id' | 'isPrimary'>) => {
+      const updatedMethods = await api.addPaymentMethod(method);
+      setPaymentMethods(updatedMethods);
+  };
+  const handleRemoveMethod = async (methodId: string) => {
+      const updatedMethods = await api.removePaymentMethod(methodId);
+      setPaymentMethods(updatedMethods);
+  };
+  const handleSetPrimary = async (methodId: string) => {
+      const updatedMethods = await api.setPrimaryPaymentMethod(methodId);
+      setPaymentMethods(updatedMethods);
+  };
+
+  const handleSetBiometricEnabled = async (enabled: boolean) => {
+    await api.setBiometricEnabled(enabled);
+    setIsBiometricEnabled(enabled);
+  };
+
+  const handleBiometricLogin = async () => {
+    const success = await api.biometricLogin();
+    if (success) {
+      setIsAuthenticated(true);
+      setIsBiometricPromptVisible(false);
+    } else {
+      alert("Biometric login failed.");
+      setIsBiometricPromptVisible(false);
+    }
+  };
+  
+  
+  // --- Screen Rendering ---
+  
+  const renderScreen = () => {
+    if (isAppLoading) {
+        return <div className="flex items-center justify-center h-screen"><AppLogoIcon className="w-20 h-20 animate-pulse" /></div>;
+    }
+    // Fullscreen flows that don't need the nav bar
+    if (!isAuthenticated) {
+      switch(screen) {
+        case Screen.Login:
+          return <LoginScreen onLoginRequest={handleLoginRequest} onNavigateToRecovery={() => setScreen(Screen.Recovery)} isBiometricEnabled={isBiometricEnabled} onBiometricLogin={() => setIsBiometricPromptVisible(true)} />;
+        case Screen.Otp:
+          return <OtpScreen phoneNumber={loginPhoneNumber} onVerify={handleOtpVerify} onGoBack={() => setScreen(Screen.Login)} onResend={() => alert("Resent code (mock)")}/>;
+        case Screen.Recovery:
+            return <RecoveryScreen onNavigateToLogin={() => setScreen(Screen.Login)} />;
+        default:
+          return <LoginScreen onLoginRequest={handleLoginRequest} onNavigateToRecovery={() => setScreen(Screen.Recovery)} isBiometricEnabled={isBiometricEnabled} onBiometricLogin={() => setIsBiometricPromptVisible(true)} />;
+      }
+    }
+    
+    if (screen === Screen.Scan) {
+      return <ScanScreen onScanSuccess={handleScanSuccess} onCancel={() => setScreen(Screen.Dashboard)} />;
+    }
+    if (screen === Screen.Payment && pendingPayment) {
+      return <PaymentScreen 
+        transaction={pendingPayment} 
+        remainingBudget={budget.total - budget.spent}
+        onConfirm={handlePaymentConfirm} 
+        onCancel={() => setScreen(Screen.Dashboard)} 
+      />;
+    }
+     if (screen === Screen.PaymentSuccess && activeTransaction) {
+      return <PaymentSuccessScreen 
+        transaction={activeTransaction} 
+        budget={{...budget, spent: budget.spent + activeTransaction.amount}}
+        onClose={() => {
+            setActiveTransaction(null);
+            setScreen(Screen.Dashboard);
+        }}
+        onUpdateOdometer={handleUpdateOdometer}
+      />;
+    }
+    if (activeTransaction && screen === Screen.TransactionDetail) {
+        return <TransactionDetail transaction={activeTransaction} transactions={transactions} onClose={() => setActiveTransaction(null)} />;
+    }
+
+    // Screens with nav bar
+    let currentScreenComponent;
+    switch (screen) {
+      case Screen.Dashboard:
+        currentScreenComponent = <Dashboard budget={budget} transactions={transactions} points={points.balance} notifications={notifications} onScan={() => setScreen(Screen.Scan)} setScreen={setScreen} />;
+        break;
+      case Screen.History:
+        currentScreenComponent = <HistoryScreen transactions={transactions} onViewTransaction={(tx) => { setActiveTransaction(tx); setScreen(Screen.TransactionDetail) }} />;
+        break;
+      case Screen.Budget:
+        currentScreenComponent = <BudgetScreen budget={budget} onUpdateBudget={handleUpdateBudget} />;
+        break;
+      case Screen.Stations:
+        currentScreenComponent = <StationsScreen />;
+        break;
+      case Screen.Profile:
+        currentScreenComponent = user && <ProfileScreen user={user} onLogout={handleLogout} onDeleteAccount={handleDeleteAccount} setScreen={setScreen} theme={theme} toggleTheme={toggleTheme} isBiometricEnabled={isBiometricEnabled} onSetBiometricEnabled={handleSetBiometricEnabled} />;
+        break;
+      case Screen.Notifications:
+        currentScreenComponent = <NotificationsScreen notifications={notifications} onMarkAsRead={handleMarkNotificationsRead} />;
+        break;
+      case Screen.Rewards:
+        currentScreenComponent = <RewardsScreen points={points} />;
+        break;
+      case Screen.PaymentMethods:
+        currentScreenComponent = <PaymentMethodsScreen methods={paymentMethods} onAddMethod={handleAddMethod} onRemoveMethod={handleRemoveMethod} onSetPrimary={handleSetPrimary} />;
+        break;
+      default:
+        currentScreenComponent = <Dashboard budget={budget} transactions={transactions} points={points.balance} notifications={notifications} onScan={() => setScreen(Screen.Scan)} setScreen={setScreen} />;
+    }
+    
+    return (
+      <div className="pb-24">
+        {currentScreenComponent}
       </div>
+    );
+  };
+  
+  return (
+    <div className="w-full max-w-md mx-auto bg-gray-100 dark:bg-gray-950 min-h-screen shadow-2xl relative">
+      <main className="p-4">
+        {renderScreen()}
+      </main>
+      {isAuthenticated && <BottomNavBar activeScreen={screen} setScreen={setScreen} />}
+       {isBiometricPromptVisible && !isAuthenticated && (
+        <BiometricPrompt
+          onSuccess={handleBiometricLogin}
+          onCancel={() => setIsBiometricPromptVisible(false)}
+        />
+      )}
     </div>
   );
-};
+}
 
 export default App;

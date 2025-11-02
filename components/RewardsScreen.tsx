@@ -22,10 +22,10 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ points }) => {
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Redeem Points</h2>
-        <div className="space-y-3">
-            <RewardItem pointsNeeded={100} reward="GH₵10 Fuel Discount" disabled={points.balance < 100} />
-            <RewardItem pointsNeeded={250} reward="GH₵30 Fuel Discount" disabled={points.balance < 250} />
-            <RewardItem pointsNeeded={500} reward="Free Car Wash Coupon" disabled={points.balance < 500} />
+        <div className="space-y-4">
+            <RewardItem currentPoints={points.balance} pointsNeeded={100} reward="GH₵10 Fuel Discount" />
+            <RewardItem currentPoints={points.balance} pointsNeeded={250} reward="GH₵30 Fuel Discount" />
+            <RewardItem currentPoints={points.balance} pointsNeeded={500} reward="Free Car Wash Coupon" />
         </div>
       </div>
 
@@ -52,16 +52,30 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ points }) => {
   );
 };
 
-const RewardItem: React.FC<{pointsNeeded: number; reward: string; disabled: boolean}> = ({ pointsNeeded, reward, disabled }) => (
-    <div className={`p-4 rounded-xl flex justify-between items-center ${disabled ? 'bg-gray-50 dark:bg-gray-700/50' : 'bg-green-50 dark:bg-green-900/50'}`}>
-        <div>
-            <p className={`font-semibold ${disabled ? 'text-gray-600 dark:text-gray-400' : 'text-green-800 dark:text-green-300'}`}>{reward}</p>
-            <p className={`text-sm ${disabled ? 'text-gray-400 dark:text-gray-500' : 'text-green-700 dark:text-green-400'}`}>{pointsNeeded} points</p>
+const RewardItem: React.FC<{currentPoints: number; pointsNeeded: number; reward: string;}> = ({ currentPoints, pointsNeeded, reward }) => {
+    const progress = Math.min((currentPoints / pointsNeeded) * 100, 100);
+    const canRedeem = currentPoints >= pointsNeeded;
+
+    return (
+    <div className={`p-4 rounded-xl ${canRedeem ? 'bg-green-50 dark:bg-green-900/50' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
+        <div className="flex justify-between items-center mb-2">
+            <div>
+                <p className={`font-semibold ${canRedeem ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-400'}`}>{reward}</p>
+                <p className={`text-sm ${canRedeem ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'}`}>
+                    <span className="font-bold">{pointsNeeded}</span> points
+                </p>
+            </div>
+            <button disabled={!canRedeem} className="bg-white dark:bg-gray-700 text-sm font-semibold py-2 px-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300">
+                Redeem
+            </button>
         </div>
-        <button disabled={disabled} className="bg-white dark:bg-gray-800 text-sm font-semibold py-2 px-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300">
-            Redeem
-        </button>
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div
+                className={`h-2 rounded-full ${canRedeem ? 'bg-green-500' : 'bg-yellow-500'} transition-all duration-500 ease-out`}
+                style={{ width: `${progress}%` }}
+            ></div>
+        </div>
     </div>
-)
+)}
 
 export default RewardsScreen;

@@ -2,8 +2,9 @@ export interface Transaction {
   id: string;
   station: string;
   amount: number;
-  date: string;
+  date: string; // ISO string
   pointsEarned: number;
+  odometer?: number;
 }
 
 export interface Budget {
@@ -11,60 +12,64 @@ export interface Budget {
   spent: number;
 }
 
-export enum Screen {
-  Dashboard = 'DASHBOARD',
-  History = 'HISTORY',
-  Budget = 'BUDGET',
-  Payment = 'PAYMENT',
-  Profile = 'PROFILE',
-  Stations = 'STATIONS',
-  Notifications = 'NOTIFICATIONS',
-  Rewards = 'REWARDS',
-  PaymentMethods = 'PAYMENT_METHODS',
-  Scan = 'SCAN',
-  PaymentSuccess = 'PAYMENT_SUCCESS',
-}
-
-export interface FuelSavingTip {
-    tip: string;
-    explanation: string;
+export interface Notification {
+  id: string;
+  message: string;
+  date: string; // ISO string
+  read: boolean;
+  type: 'success' | 'warning' | 'info' | 'reward';
 }
 
 export interface User {
   phoneNumber: string;
 }
 
+export interface FuelSavingTip {
+  tip: string;
+  explanation: string;
+}
+
 export interface GasStation {
     id: string;
     name: string;
-    location: {
-        lat: number;
-        lng: number;
-    };
+    uri?: string;
+    title?: string;
 }
 
-export interface Notification {
-    id: string;
-    message: string;
-    date: string;
-    read: boolean;
-    type: 'info' | 'success' | 'warning' | 'reward';
+export interface RewardPointHistory {
+    transactionId: string;
+    date: string; // ISO string
+    points: number;
 }
 
 export interface RewardPoints {
     balance: number;
-    history: {
-        transactionId: string;
-        points: number;
-        date: string;
-    }[];
+    history: RewardPointHistory[];
+}
+
+export interface PaymentMethod {
+    id: string;
+    provider: 'MTN' | 'Vodafone' | 'AirtelTigo';
+    phoneNumber: string;
+    isPrimary: boolean;
+}
+
+export enum Screen {
+  Login,
+  Otp,
+  Dashboard,
+  History,
+  Budget,
+  Stations,
+  Profile,
+  Payment,
+  Scan,
+  PaymentSuccess,
+  Notifications,
+  TransactionDetail,
+  Rewards,
+  PaymentMethods,
+  Recovery
 }
 
 export type Theme = 'light' | 'dark';
-
-export interface PaymentMethod {
-  id: string;
-  provider: 'MTN' | 'Vodafone' | 'AirtelTigo';
-  phoneNumber: string;
-  isPrimary: boolean;
-}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Transaction, Budget, Screen, Notification } from '../types';
-import { QrCodeIcon, GasPumpIcon, WarningIcon, BellIcon, StarIcon } from './icons/Icons';
+import { QrCodeIcon, GasPumpIcon, WarningIcon, BellIcon, StarIcon, GaugeIcon } from './icons/Icons';
 import FuelSavingTips from './FuelSavingTips';
 
 interface DashboardProps {
@@ -12,11 +12,30 @@ interface DashboardProps {
   setScreen: (screen: Screen) => void;
 }
 
+const calculateEfficiency = (transactions: Transaction[]) => {
+    const sortedTx = [...transactions]
+      .filter(tx => tx.odometer !== undefined && tx.odometer > 0)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    if(sortedTx.length < 2) return null;
+
+    const latestTx = sortedTx[sortedTx.length - 1];
+    const previousTx = sortedTx[sortedTx.length - 2];
+
+    if (latestTx.odometer! > previousTx.odometer!) {
+        const distance = latestTx.odometer! - previousTx.odometer!;
+        const costPerKm = latestTx.amount / distance;
+        return { costPerKm };
+    }
+    return null;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ budget, transactions, onScan, points, setScreen, notifications }) => {
   const remaining = budget.total - budget.spent;
-  const percentageSpent = (budget.spent / budget.total) * 100;
-  const isLowBudget = remaining / budget.total < 0.15;
+  const percentageSpent = (budget.total > 0 ? budget.spent / budget.total : 0) * 100;
+  const isLowBudget = budget.total > 0 && (remaining / budget.total) < 0.15;
   const unreadNotifications = notifications.filter(n => !n.read).length;
+  const efficiency = calculateEfficiency(transactions);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -56,6 +75,19 @@ const Dashboard: React.FC<DashboardProps> = ({ budget, transactions, onScan, poi
           </div>
         </div>
       </div>
+      
+      {efficiency && (
+         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 text-center">
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Efficiency</span>
+            <div className="flex items-center justify-center gap-2">
+               <GaugeIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                    GH₵{efficiency.costPerKm.toFixed(2)}
+                    <span className="text-base font-medium text-gray-500 dark:text-gray-400"> / km</span>
+                </p>
+            </div>
+          </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 space-y-3">
          <div className="flex justify-between text-sm font-medium text-gray-600 dark:text-gray-400">
